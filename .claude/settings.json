@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make:*)", "Bash(pytest:*)", "Bash(python -m pytest:*)", "Bash(python3 -m pytest:*)",
+      "Bash(ruff:*)", "Bash(mypy:*)", "Bash(pip install:*)", "Bash(python3:*)", "Bash(python:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(grep:*)", "Bash(find:*)", "Bash(gz topic:*)", "Bash(gz sdf:*)"
+    ],
+    "deny": [
+      "Read(./docs/reference/**)",
+      "Read(./**/*.mp4)",
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(sudo:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hook_format.sh\"" }]
+      }
+    ]
+  }
+}

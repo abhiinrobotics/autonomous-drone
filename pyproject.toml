@@ -1,0 +1,35 @@
+[project]
+name = "aero"
+version = "0.1.0"
+description = "AeroTHON 2026 Mission 2 autonomous stack (PX4, SITL-first)"
+requires-python = ">=3.10"
+dependencies = ["pymavlink", "numpy", "opencv-python", "pyzbar", "pyyaml", "qrcode[pil]"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-timeout", "ruff", "mypy", "types-PyYAML"]
+
+[tool.setuptools.packages.find]
+include = ["aero*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N", "C4", "RUF", "PT", "PL", "T20", "ARG", "TRY"]
+ignore = ["PLR0913", "PLR2004", "TRY003"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["T20"]
+"tests/*" = ["PLR2004", "ARG"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-q --tb=short"
+markers = ["sitl: needs PX4 SITL + Gazebo running (slow)"]
+timeout = 120
+testpaths = ["tests"]

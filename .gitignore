@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+logs/*
+!logs/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+sim/worlds/*/
+*.mp4
+.env
+*.params
