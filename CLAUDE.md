@@ -37,3 +37,8 @@ Do not pre-read anything else. Never open PDFs (`docs/reference/`) — use `docs
 - Use Grep/Glob and line ranges; don’t read whole big files or logs. Summarise logs via the `sitl-debugger` agent.
 - Run tests quietly (`pytest -q -x --tb=short`); never paste full tracebacks/logs back, quote the relevant lines.
 - Prefer targeted edits over rewriting files. Keep answers short; code and results over prose.
+
+## Record keeping (mandatory)
+- `docs/DECISIONS.md`: log every non-obvious decision/assumption as it is made (template inside). Never rewrite history; supersede.
+- `docs/IMPLEMENTATION.md`: per Part, record files built, run/verify commands, and a status table. Mark VERIFIED only after running the command; paste the command + result summary. Any later change to a built Part -> add a line under "Changes after initial implementation" and re-verify or mark UNVERIFIED.
+- `docs/STATUS.md` stays a short pointer (current Part, next command); details live in the two logs above.
