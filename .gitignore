@@ -16,3 +16,4 @@ sim/models/*/
 *.mp4
 .env
 *.params
+docs/reference/*.pdf
