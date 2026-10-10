@@ -13,19 +13,20 @@
 - Camera FOV (down/front), mount: still placeholders from `docs/rules/sim_sdf.md` (set in Part 1)
 
 ## Done
-- Part 0 — environment bring-up: `scripts/check_env.py` (version report + SITL heartbeat smoke test), `aero/sim/px4_sitl.py` (PX4+gz process group launcher), `aero/sim/env_report.py`, pytest `sitl` fixture. Details in `docs/IMPLEMENTATION.md`.
+- Part 0 — environment bring-up (commit `fc3dbe2`): `scripts/check_env.py` (version report + SITL heartbeat smoke test), `aero/sim/px4_sitl.py` (PX4+gz process-group launcher), `aero/sim/mavlink_probe.py`, `aero/sim/env_report.py`, function-scoped pytest `sitl` fixture. Details in `docs/IMPLEMENTATION.md`.
 
 ## Decisions
-See `docs/DECISIONS.md` D-001..D-007: PX4 1.18.0-alpha1 for SITL (hardware 1.17.0), gz Harmonic 8.15.0, Python SITL launcher instead of `run_sitl.sh`, `px4 -d` mandatory, make targets clear `PYTHONPATH`, refuse start on a stale gz world, numeric-prefix version comparison.
+See `docs/DECISIONS.md` D-001..D-011: PX4 1.18.0-alpha1 for SITL (hardware 1.17.0), gz Harmonic 8.15.0, Python SITL launcher instead of `run_sitl.sh`, `px4 -d` mandatory, make targets clear `PYTHONPATH`, refuse start on a stale gz world (and on an unreachable gz), numeric-prefix version comparison, heartbeat-based readiness, process group recorded at spawn, function-scoped `sitl` fixture.
 
 ## Known issues
 - Running `pytest` directly in a ROS-sourced shell fails (ROS Humble pytest plugins + `PYTHONPATH`). Use `make test` / `make test-sitl` (D-005).
-- A crashed SITL run can leave `gz sim` alive; the next start refuses with a clear message. Kill it by hand (D-006).
+- A SITL run hard-killed with SIGKILL leaves PX4 + gz alive; `make sitl-clean` clears them (pgid is also saved as `px4.pgid` in the run dir).
+- A stale gz world makes the next start refuse with a clear message, by design (D-006).
 - SITL (1.18.0-alpha1) and planned hardware firmware (1.17.0) differ by about one release (D-001).
 
 ## Measured results
 | Part | Test | Seeds | Result |
 |---|---|---|---|
-| 0 | `make test` (unit) | n/a | 39 passed, 2026-10-10 |
-| 0 | `make test-sitl` (`tests/test_sitl_smoke.py`) | 0 | 1 passed in 12.9 s, heartbeat sysid=1, no leftover processes, 2026-10-10 |
-| 0 | `make check-env` | n/a | all checks yes, heartbeat in 0.8 s after ready, 2026-10-10 |
+| 0 | `make test` (unit) | n/a | 54 passed, 2026-10-10 |
+| 0 | `make test-sitl` (`tests/test_sitl_smoke.py`) | 0 | 1 passed in 13.8 s, heartbeat sysid=1, no leftover processes, 2026-10-10 |
+| 0 | `make check-env` | n/a | all checks yes, heartbeat in 1.0 s after ready, 2026-10-10 |
