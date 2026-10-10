@@ -3,7 +3,17 @@ name = "aero"
 version = "0.1.0"
 description = "AeroTHON 2026 Mission 2 autonomous stack (PX4, SITL-first)"
 requires-python = ">=3.10"
-dependencies = ["pymavlink", "numpy", "opencv-python", "pyzbar", "pyyaml", "qrcode[pil]"]
+dependencies = [
+    "pymavlink",
+    "numpy",
+    "opencv-python",
+    "pyzbar",
+    "pyyaml",
+    "qrcode[pil]",
+    # The distribution's gz.msgs10 bindings are generated against the
+    # pre-4.x protobuf API and fail to import with protobuf >= 4.
+    "protobuf==3.20.3",
+]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-timeout", "ruff", "mypy", "types-PyYAML"]

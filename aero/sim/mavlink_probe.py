@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 from pymavlink import mavutil
 
+from aero.core.errors import AeroError
+
 # MAVLink system id used by ground stations and tooling; PX4 vehicles use 1.
 GCS_SYSTEM_ID = 255
 # PX4 SITL serves the onboard/offboard MAVLink stream on this remote UDP port
@@ -20,7 +22,7 @@ GCS_SYSTEM_ID = 255
 OFFBOARD_UDP_PORT_BASE = 14540
 
 
-class ProbeError(RuntimeError):
+class ProbeError(AeroError):
     """The MAVLink endpoint could not be opened (e.g. the port is in use)."""
 
 

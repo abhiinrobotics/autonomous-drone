@@ -5,11 +5,17 @@
 cd ~/aerothon_2026            # unzip the scaffold here
 git init && git add -A && git commit -m "chore: scaffold"
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"       # Part 0 will also check PX4 / Gazebo
+make install                  # deps + links Gazebo's Python bindings into the venv
 sudo apt install libzbar0 ffmpeg   # QR decoding + video
 npm i -g pyright              # or: pip install pyright  (needed by the LSP plugin)
 claude
 ```
+Gazebo (`gz sim`, Harmonic) and a built PX4 SITL (`make -C ~/PX4-Autopilot px4_sitl`) must
+already be present; `make check-env` reports what is missing. `make install` symlinks the
+apt-installed `gz` Python package into the venv — the bindings are not on PyPI, and the
+project pins `protobuf==3.20.3` because they are generated against the pre-4.x API.
+Run every tool through `make` (it clears the ROS `PYTHONPATH` that otherwise breaks pytest).
+
 First message: `/part 0`. After a Part passes: `/handoff`, then `/clear`, then `/part <next>`.
 
 ## 2. Plugins (install inside Claude Code)

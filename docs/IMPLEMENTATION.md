@@ -65,4 +65,7 @@ Entry template:
 - Camera FOV / mount values are still the placeholders in `docs/rules/sim_sdf.md` — to be fixed in Part 1.
 
 ### Changes after initial implementation
-- (none yet)
+- 2026-10-10 (during Part 1): the process-group teardown moved out of `px4_sitl.py` into the shared `aero/sim/process.py` so the gz server could reuse it; `SitlConfig` gained attach mode (`standalone_gz`, `gz_model_name`, D-012); simulator errors now derive from `AeroError`. Re-verified: `make test-sitl` 6 passed, 2026-10-10.
+- 2026-10-10 (during Part 1): `make sitl-clean` now matches executable names (`pkill -x px4|gz|ruby`) instead of command lines — the old `-f` pattern also matched the shell running the target, so it killed itself, and the gz server shows up as `ruby` (the `gz` CLI is a ruby wrapper). Verified by hand after a hard-killed run.
+- 2026-10-10 (during Part 1): `make lint` / `typecheck` / `test` now run against `aero scripts tests` rather than the repo root, so unrelated scratch files at the root cannot fail the gate.
+- 2026-10-10 (during Part 1): `make install` depends on a new `gz-link` target and `pyproject.toml` pins `protobuf==3.20.3` (D-017).

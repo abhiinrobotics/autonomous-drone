@@ -1,0 +1,134 @@
+# Gazebo world geometry and sensor parameters for the SkyScan field.
+#
+# Geometry is inferred from rulebook Fig. 3 / section 4.2.4 (the real layout is
+# "subject to change on event day"), so every number lives here and the
+# generator randomises inside the given ranges per seed.
+# Lengths are metres, angles degrees, rates Hz. "forward" = +x of the gz world
+# (ENU: +x is east), which is also the lane axis.
+
+origin:
+  # PX4's default SITL home. Keep a real lat/lon so the GPS/EKF works.
+  lat_deg: 47.397971
+  lon_deg: 8.546164
+  elevation_m: 0.0
+
+ground:
+  size_m: 200.0
+  texture_px: 1024
+  # Grass-like noise: a naive green detector must fail on this.
+  base_rgb: [0.24, 0.42, 0.18]
+  noise_strength: 0.18
+
+takeoff_zone:
+  size_x_m: 3.0
+  size_y_m: 7.0
+  rgb: [0.15, 0.3, 0.75]
+
+start_qr:
+  size_m: 1.0
+  # Drone climbs to 5 m then moves ~1 m forward, so the QR sits at +1 m.
+  offset_x_m: 1.0
+  texture_px: 1024
+  quiet_zone_modules: 4
+
+lanes:
+  width_m: 3.5
+  length_m: 10.0
+  wall_height_m: 3.05          # 10 ft
+  wall_thickness_m: 0.1
+  start_x_m: 3.0
+  start_x_jitter_m: 0.5
+  wall_rgb: [0.55, 0.55, 0.55]
+
+banner:
+  width_m: 2.0
+  height_m: 1.0
+  bottom_z_m: 3.2              # just above wall height, never blocks the lane
+  text: "AeroTHON 2026"
+  texture_px: 1024
+  # Green jitter per seed, inside the detector's HSV range plus margin.
+  hue_deg_range: [100.0, 140.0]
+  saturation_range: [0.55, 0.95]
+  value_range: [0.45, 0.85]
+
+obstacles:
+  count_range: [2, 4]
+  width_range_m: [0.6, 1.2]
+  depth_m: 0.4
+  min_spacing_x_m: 2.5
+  # Keep the first/last block away from the lane mouths so entry and exit stay
+  # open; the rulebook only constrains the spacing between blocks.
+  end_clearance_m: 1.0
+  min_free_gap_m: 2.0
+  rgb: [0.05, 0.05, 0.05]
+
+delivery_zone:
+  size_x_m: 40.0
+  size_y_m: 30.0
+  gap_beyond_lane_m: 2.0
+  texture_px: 1024
+  # Lighter green than the surrounding grass.
+  base_rgb: [0.42, 0.62, 0.3]
+  noise_strength: 0.12
+  qr_count_range: [5, 6]
+  qr_size_m: 1.0
+  qr_min_spacing_m: 5.0
+  qr_margin_m: 3.0
+  qr_payload_prefix: "DELIVERY_"
+
+red_zones:
+  count_range: [1, 2]
+  size_x_m: 4.0
+  size_y_m: 4.0
+  min_clearance_to_qr_m: 3.0
+  rgb: [0.75, 0.1, 0.1]
+
+geofence:
+  margin_m: 5.0
+
+vehicle:
+  model_name: "aero_x500"
+  spawn_z_m: 0.25
+  spawn_yaw_deg: 0.0           # gz yaw 0 = facing +x (east) = lane direction
+  radius_m: 0.35
+
+cameras:
+  down:
+    width_px: 1280
+    height_px: 720
+    hfov_deg: 66.0             # placeholder: real IMX708 FOV not measured yet
+    update_rate_hz: 20.0
+    # Mount on the airframe in body FRD (x forward, y right, z down),
+    # metres and degrees. Aerospace signs: positive pitch is nose up, so the
+    # down camera is pitched -90 deg. z = +0.1 is 10 cm below base_link.
+    mount_xyz_m: [0.0, 0.0, 0.1]
+    mount_rpy_deg: [0.0, -90.0, 0.0]
+    noise_stddev: 0.007
+  front:
+    width_px: 1280
+    height_px: 800
+    hfov_deg: 90.0             # placeholder: real OV9782 FOV not measured yet
+    update_rate_hz: 30.0
+    mount_xyz_m: [0.15, 0.0, 0.0]
+    mount_rpy_deg: [0.0, 0.0, 0.0]
+    noise_stddev: 0.007
+
+ranges:
+  front:                       # TFmini Plus
+    min_m: 0.1
+    max_m: 12.0
+    beam_deg: 3.6
+    rays: 5
+    update_rate_hz: 100.0
+    noise_stddev_m: 0.02
+    mount_xyz_m: [0.15, 0.0, 0.0]
+    mount_rpy_deg: [0.0, 0.0, 0.0]
+  down:                        # TF-Luna, deliberately clipped at 8 m
+    min_m: 0.2
+    max_m: 8.0
+    beam_deg: 2.0
+    rays: 3
+    update_rate_hz: 100.0
+    noise_stddev_m: 0.02
+    mount_xyz_m: [0.0, 0.0, 0.05]
+    mount_rpy_deg: [0.0, -90.0, 0.0]

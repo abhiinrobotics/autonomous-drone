@@ -113,3 +113,57 @@ Entry template:
 - Alternatives: Raise from the probe itself — rejected: the environment report wants to show the condition as a row, not abort.
 - Consequences: On a machine without gz on `PATH`, SITL refuses to start with an explanatory message instead of failing later and more obscurely.
 - Evidence: `tests/test_px4_sitl.py::test_probe_failure_is_not_reported_as_idle`, `::test_start_refuses_when_gz_probe_fails`, `::test_parse_world_names_finds_clock_topics`.
+
+## D-012 — The vehicle is spawned into our own gz server, not by PX4
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: Part 1 needs a generated world, camera rendering on a headless server, and a vehicle model with our own sensors. If PX4 starts Gazebo (the Part 0 path) it chooses the world and spawns a stock airframe, and `PX4_SIM_MODEL=aero_x500` would additionally require a new airframe file inside PX4's ROMFS — forking the PX4 tree, which `docs/rules/sim_sdf.md` asks us to avoid.
+- Decision: `aero/sim/gz_server.py` starts `gz sim -s -r --headless-rendering <generated world>` with PX4's own `server.config` for the system plugins, spawns `sim/models/aero_x500` through gz's `create` service, and PX4 then only attaches to it (`PX4_GZ_STANDALONE=1`, `PX4_GZ_MODEL_NAME=aero_x500_0`). `PX4_SIM_MODEL` stays `gz_x500`, which selects PX4's stock *airframe* (mixer, parameters) while the simulated body is ours.
+- Alternatives: Install an airframe file into PX4 via a script (rejected: forks the PX4 tree and must be redone on every PX4 update); let PX4 spawn the model from `PX4_GZ_MODELS` (same problem, plus no control of the gz command line).
+- Consequences: Two processes to manage instead of one, both handled by `aero/sim/process.py`. `--headless-rendering` is ours to set, which is what makes the cameras publish. Any PX4 parameter that depends on the airframe entry is the stock x500's.
+- Evidence: `tests/test_part1_sitl.py` (6 passed): PX4 logs `PX4_GZ_MODEL_NAME set, PX4 will attach to existing model` and `gz_bridge world: skyscan_1, model: aero_x500_0`, then arms, takes off and repositions under its own control.
+
+## D-013 — The world file holds static geometry only; the vehicle is spawned separately
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: `docs/rules/sim_sdf.md` requires every generated world to be validated with `gz sdf -k`. That tool refuses to resolve `<include>` URIs at all ("Tried to use callback in sdf::findFile()"), in every form tried (`model://`, absolute path, `file://`), so a world containing the vehicle cannot be validated.
+- Decision: `world.sdf` contains ground, lanes, walls, obstacles, banners, zone, QRs and red zones — no includes — and is validated with `gz sdf -k`, treating warnings as errors. The vehicle is a separate model spawned into the running world (D-012). The vehicle model itself is validated by loading it: the SITL test asserts that all four sensor topics publish.
+- Alternatives: Skip validation for worlds with a vehicle (rejected: loses the check on exactly the generated part); inline the whole x500 into the world (rejected: duplicates PX4's model and breaks on PX4 updates).
+- Consequences: Nothing in the pipeline can regress the generated SDF unnoticed, but a broken vehicle model only shows up in a SITL run.
+- Evidence: `tests/test_make_world.py::test_generated_world_passes_gz_sdf_check` for seeds 1 and 2: "Valid.", no warnings.
+
+## D-014 — System plugins come from PX4's `server.config`, not from the world file
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: `docs/rules/sim_sdf.md` says to copy the world plugin block from the installed PX4's `default.sdf`. In PX4 v1.18.0-alpha1 that file has no plugin block at all: `gz_env.sh` points `GZ_SIM_SERVER_CONFIG_PATH` at `src/modules/simulation/gz_bridge/server.config`, which lists physics, sensors, scene broadcaster, IMU, NavSat, magnetometer, air pressure, contact, user commands and PX4's optical-flow plugin.
+- Decision: Generated worlds carry physics, scene, lighting and `<spherical_coordinates>` but no `<plugin>` elements, and `GzServerConfig` points the server at PX4's `server.config`. This is the documented rule's intent (use exactly the plugin set stock PX4 SITL uses) implemented against the installed version.
+- Alternatives: Hand-copy the plugin list into every generated world (rejected: duplicates a PX4-owned list that changes between versions).
+- Consequences: A generated world started without that server config has no physics or sensors. `GzServer` always sets it; anyone running `gz sim` on the file by hand must too.
+- Evidence: `tests/test_sdf.py::test_world_element_has_gps_origin_and_no_plugins`, plus the SITL runs where IMU, NavSat and the cameras all work.
+
+## D-015 — Mounts are configured in body FRD and converted once for Gazebo
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: Camera and rangefinder mounts have to be stated somewhere. Gazebo model frames are FLU (x forward, y left, z up) while this project's convention — and what `core/camera_model.py` will need in Part 3 — is aerospace body FRD (x forward, y right, z down, positive pitch nose-up).
+- Decision: `sim/world_params.yaml` states every mount in body FRD, and `aero/core/geo.frd_to_gz_pose` performs the single conversion (mirror y and z, flip the pitch and yaw signs). A down-facing sensor is therefore pitch -90 deg in config and pitch +90 deg in the generated SDF, which is what PX4's own `x500_mono_cam_down` uses.
+- Alternatives: Write gz-frame poses straight into the YAML (rejected: the mission layer would then need a second, separately maintained description of the same mount).
+- Consequences: Reading the generated SDF alone is misleading unless the conversion is known; the function's docstring and tests carry it.
+- Evidence: `tests/test_geo.py::test_frd_down_facing_sensor_becomes_gz_pitch_plus_ninety`, `tests/test_make_model.py::test_down_camera_points_at_the_ground`, and the captured down frames, which show the ground with image-up pointing forward.
+
+## D-016 — Sensor captures pause the simulation and verify the pose before reading
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: Part 1 must photograph the start QR from 5 m, but autonomous flight needs offboard control, which is Part 2. The first implementation teleported the vehicle with gz's `set_pose` while physics ran: the model keeps whatever velocity gravity has given it, so it tumbled and the "down" frame showed sky. gz also applies a `set_pose` on a later simulation update than the one in which the service replies, so a frame taken straight afterwards can predate the move.
+- Decision: `aero.sim.capture.observe_pose` pauses the world, teleports, steps 10 iterations, checks the model's ground-truth pose against the request (0.4 m tolerance), and only then steps 25 more iterations and reads the sensors. Because a paused world publishes only while stepping, capture rigs also use a long freshness limit and rely on message counters advancing instead.
+- Alternatives: Re-send the pose at 10 Hz with physics running (rejected: it worked only intermittently and the drone still drifted); fly the vehicle (not possible before Part 2).
+- Consequences: Captures are deterministic and repeatable. This path must never be used with PX4 attached, because PX4 runs in lockstep with the simulation clock; the SITL fixtures keep the two apart.
+- Evidence: `tests/test_part1_sitl.py` sensor tests pass repeatedly; `scripts/capture_part1.py --seed 1|2` decodes the expected payload and reports a down range within 0.15 m of the commanded altitude.
+
+## D-017 — Gazebo Python bindings are linked into the venv and pinned to protobuf 3.20.3
+- Date / Part: 2026-10-10 / Part 1
+- Status: Active
+- Context: Reading camera and lidar topics needs `gz.transport13` / `gz.msgs10`, which Ubuntu installs into `/usr/lib/python3/dist-packages`, outside our venv. They are generated against the pre-4.x protobuf API, and the system's pip-installed protobuf 6.33.5 refuses to import them ("Descriptors cannot not be created directly") — so they are broken even for the system interpreter.
+- Decision: Symlink only the `gz` package into the venv's `site-packages` and pin `protobuf==3.20.3` as a project dependency. Linking the single package keeps the rest of the system's dist-packages (including ROS) out of the venv, which `make`'s `PYTHONPATH` clearing exists to prevent (D-005).
+- Alternatives: Recreate the venv with `--system-site-packages` (rejected: drags in everything and re-opens D-005); read images through the `gz topic -e` CLI (rejected: text-encoded binary, far too slow for a camera).
+- Consequences: A fresh clone needs the symlink step, so it is in `make install` and `docs/SETUP.md`. protobuf is held at 3.20.3 until the distribution ships regenerated bindings.
+- Evidence: `make install` on this machine, then the SITL tests, which decode 1280x720 images and LaserScans over gz transport.

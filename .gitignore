@@ -10,6 +10,9 @@ logs/*
 artifacts/*
 !artifacts/.gitkeep
 sim/worlds/*/
+# The vehicle model is generated from sim/world_params.yaml (make_model), so
+# committing it would let the checked-in copy drift from the parameters.
+sim/models/*/
 *.mp4
 .env
 *.params
